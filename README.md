@@ -183,6 +183,9 @@ npm run build
 
 # Preview production build locally
 npm run preview
+
+# Deploy to production server
+npm run deploy
 ```
 
 ### Development Server
@@ -223,6 +226,92 @@ npm run preview
 ```
 
 Serves the production build locally for testing.
+
+## Deployment
+
+### Automated Deployment to Server
+
+The project includes an automated deployment script for deploying to a dedicated server via SSH.
+
+**Configuration:**
+
+- Server: `rs-development.net`
+- SSH Port: `2121`
+- User: `rs-dev`
+- Remote Path: `/var/www/reportify-web`
+
+**Deploy Command:**
+
+```bash
+# Interactive (will prompt for sudo password)
+yarn deploy
+
+# Or pass password as argument
+./deploy.sh "your_sudo_password"
+
+# Or with npm
+npm run deploy
+```
+
+**What the deployment script does:**
+
+1. Builds the project (`yarn build`)
+2. Creates a tarball of the `dist/` folder
+3. Uploads the archive to the server via SSH
+4. Extracts files to `/var/www/reportify-web`
+5. Sets proper permissions for nginx (`www-data:www-data`)
+6. Reloads nginx to serve the new version
+7. Creates automatic backups of previous deployments
+
+**Prerequisites:**
+
+- SSH access configured for `rs-dev@reportify.rs-development.net:2121`
+- SSH key-based authentication set up (recommended)
+- Sudo password for the `rs-dev` user (script will prompt or accept as argument)
+- Nginx configured with proxy pass for `/api` to backend
+
+**Setting up SSH key authentication (recommended):**
+
+```bash
+# Generate SSH key (if you don't have one)
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Copy key to server
+ssh-copy-id -p 2121 rs-dev@rs-development.net
+
+# Test connection
+ssh -p 2121 rs-dev@rs-development.net
+```
+
+**Manual Deployment:**
+
+If you prefer manual deployment:
+
+```bash
+# Build the project
+yarn build
+
+# Upload to server
+scp -P 2121 -r dist/* rs-dev@rs-development.net:/var/www/reportify-web/
+
+# SSH into server and reload nginx
+ssh -p 2121 rs-dev@rs-development.net "sudo systemctl reload nginx"
+```
+
+**Nginx Configuration:**
+
+Ensure your nginx configuration includes a proxy pass for the API:
+
+```nginx
+location /api {
+    proxy_pass http://localhost:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+}
+```
 
 ## Usage Guide
 
